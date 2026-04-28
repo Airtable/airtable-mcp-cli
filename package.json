@@ -1,0 +1,36 @@
+{
+  "name": "@airtable/mcp-cli",
+  "version": "0.1.1",
+  "description": "Airtable MCP CLI — auto-discovers commands from the MCP server",
+  "bin": {
+    "airtable-mcp": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "link": "npm run build && npm link"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Airtable/airtable-mcp-cli.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "clipanion": "^4.0.0-rc.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.5.0",
+    "vitest": "^3.0.0"
+  }
+}
