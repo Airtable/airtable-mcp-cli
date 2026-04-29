@@ -12,7 +12,7 @@ This CLI discovers commands from the [Airtable MCP server](https://airtable.com/
 curl -fsSL https://raw.githubusercontent.com/Airtable/airtable-mcp-cli/main/install.sh | sh
 ```
 
-Downloads a self-contained binary for your platform (macOS or Linux, x64 or arm64). Verifies SHA256 checksum. No Node.js required.
+Downloads a self-contained binary for your platform (macOS or Linux, x64 or arm64). Verifies SHA256 checksum.
 
 ### npm
 
@@ -59,6 +59,7 @@ airtable-mcp tools                    List available tools
 airtable-mcp <tool> [--flags]         Run a tool
 airtable-mcp <tool> --help            Show help and flags for a tool
 airtable-mcp completions <shell>      Generate shell completions (bash, zsh, fish)
+airtable-mcp --help                   Show help
 airtable-mcp --version                Print version
 ```
 
