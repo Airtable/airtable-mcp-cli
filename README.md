@@ -2,27 +2,15 @@
 
 Manage your Airtable bases from the terminal.
 
-This CLI discovers commands from the [Airtable MCP server](https://airtable.com/platform/mcp) at runtime. `airtable-mcp tools` shows whatever the server exposes at that moment. If the server adds, removes, or renames a tool, the CLI reflects that without a client release. See [DESIGN.md](DESIGN.md) for the design rationale.
+This CLI discovers commands from the Airtable MCP server at runtime. `airtable-mcp tools` shows whatever the server exposes at that moment. If the server adds, removes, or renames a tool, the CLI reflects that without a client release. See [DESIGN.md](DESIGN.md) for the design rationale.
 
 ## Install
-
-### Standalone binary (no dependencies)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Airtable/airtable-mcp-cli/main/install.sh | sh
 ```
 
-Downloads a self-contained binary for your platform (macOS or Linux, x64 or arm64). Verifies SHA256 checksum. No Node.js required.
-
-### npm
-
-```sh
-npm install -g @airtable/mcp-cli
-```
-
-Requires Node.js 20+. Or try without installing: `npx @airtable/mcp-cli --help`
-
-**Windows:** Use `npm install -g @airtable/mcp-cli`. Standalone binary coming later.
+Also available on npm: `npm install -g @airtable/mcp-cli`
 
 ## Quick start
 
@@ -47,7 +35,7 @@ airtable-mcp list-records --baseId appXXX --tableIdOrName Tasks
 
 The first time you run a tool, the CLI fetches the tool list from the server and caches it for 60 seconds. After that, subsequent commands are fast. Use `--refresh` on any tool command to bypass the cache.
 
-> **Tool names and arguments are discovered from the server and may change without notice.** The tools you see today may be renamed, removed, or have their arguments changed in a future server update. If you're scripting against specific tools, check for tool existence before calling and handle missing or unexpected fields in output.
+> **This CLI is experimental and tool names, arguments, and output formats may change without notice.** The tools you see today may be renamed, removed, or have their arguments changed in a future server update. If you're scripting against specific tools, check for tool existence before calling and handle missing or unexpected fields in output.
 
 ## Commands
 
@@ -59,6 +47,7 @@ airtable-mcp tools                    List available tools
 airtable-mcp <tool> [--flags]         Run a tool
 airtable-mcp <tool> --help            Show help and flags for a tool
 airtable-mcp completions <shell>      Generate shell completions (bash, zsh, fish)
+airtable-mcp --help                   Show help
 airtable-mcp --version                Print version
 ```
 

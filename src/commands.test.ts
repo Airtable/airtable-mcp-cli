@@ -212,6 +212,21 @@ describe('--output validation', () => {
     });
 });
 
+describe('auth error', () => {
+    it('prints clean message on invalid token', () => {
+        const tmpHome = join(tmpdir(), `cli-test-${Date.now()}`);
+        mkdirSync(tmpHome, {recursive: true});
+        const {stderr, exitCode} = run(['tools'], {
+            HOME: tmpHome,
+            AIRTABLE_TOKEN: 'pat_invalid_token_for_testing',
+        });
+        expect(exitCode).toBe(1);
+        expect(stderr).toContain('Authentication failed');
+        expect(stderr).not.toContain('StreamableHTTPError');
+        rmSync(tmpHome, {recursive: true});
+    });
+});
+
 describe('completions', () => {
     it('outputs bash completions', () => {
         const {stdout, exitCode} = run(['completions', 'bash']);

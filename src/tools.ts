@@ -1,5 +1,6 @@
 import type {Tool} from '@modelcontextprotocol/sdk/types.js';
 import type {Client} from '@modelcontextprotocol/sdk/client/index.js';
+import {StreamableHTTPError} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 import type {Profile} from './config.js';
 import {isFresh, loadCache, saveCache} from './cache.js';
@@ -37,6 +38,10 @@ export async function resolveTools(
         saveCache(profileName, tools);
         return {tools, client};
     } catch (err) {
+        if (err instanceof StreamableHTTPError && err.code === 401) {
+            stderr.write('Authentication failed. Check your token or run `airtable-mcp configure`.\n');
+            process.exit(1);
+        }
         const cache = loadCache(profileName);
         if (cache) {
             const age = Math.round((Date.now() - cache.fetchedAt) / 60000);
