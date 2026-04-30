@@ -397,15 +397,15 @@ class RunCommand extends Command {
         }
 
         const nullStream = {write: () => true} as unknown as NodeJS.WritableStream;
-        const stderr = quiet ? nullStream : this.context.stderr;
+        const statusStream = quiet ? nullStream : this.context.stderr;
 
-        const resolved = requireProfile(loadConfig(), profileFlag ?? undefined, stderr);
+        const resolved = requireProfile(loadConfig(), profileFlag ?? undefined, this.context.stderr);
         if (!resolved) return 1;
 
         const toolName = args[0]!.replace(/-/g, '_');
         const rest = args.slice(1);
 
-        const {tools, client: cachedClient} = await resolveTools(resolved.profile, resolved.profileName, forceRefresh, stderr);
+        const {tools, client: cachedClient} = await resolveTools(resolved.profile, resolved.profileName, forceRefresh, statusStream);
 
         const tool = visibleTools(tools).find((t) => t.name === toolName);
         if (!tool) {
