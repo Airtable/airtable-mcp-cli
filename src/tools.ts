@@ -10,7 +10,7 @@ import {mcpConnect, mcpListTools} from './mcp.js';
 // Visibility
 // ---------------------------------------------------------------------------
 
-export function visibleTools(tools: Tool[]): Tool[] {
+export function visibleTools(tools: Array<Tool>): Array<Tool> {
     return tools.filter((t) => {
         const meta = t._meta as Record<string, unknown> | undefined;
         return !meta?.hideFromCli;
@@ -21,32 +21,43 @@ export function visibleTools(tools: Tool[]): Tool[] {
 // Resolution (cache → network → stale cache)
 // ---------------------------------------------------------------------------
 
+export type Result<T> =
+    | {error: null; value: T}
+    | {error: ResponseError; value?: never};
+
+export enum ErrorType {
+    AUTH_FAILED = 'auth_failed',
+    UNPARSABLE_VALUE = 'unparsable_value',
+}
+
+export type ResponseError =
+    | {type: ErrorType.AUTH_FAILED}
+    | {type: ErrorType.UNPARSABLE_VALUE; argName: string; value: string};
+
+type ResolveToolsValue = {tools: Array<Tool>; client: Client | null; stale: boolean};
+
 export async function resolveTools(
     profile: Profile,
     profileName: string,
     forceRefresh: boolean,
-    stderr: NodeJS.WritableStream,
-): Promise<{tools: Tool[]; client: Client | null}> {
+): Promise<Result<ResolveToolsValue>> {
     if (!forceRefresh) {
         const cache = loadCache(profileName);
-        if (cache && isFresh(cache)) return {tools: cache.tools, client: null};
+        if (cache !== null && isFresh(cache)) return {error: null, value: {tools: cache.tools, client: null, stale: false}};
     }
 
     try {
         const client = await mcpConnect(profile.endpoint, profile);
         const tools = await mcpListTools(client);
         saveCache(profileName, tools);
-        return {tools, client};
+        return {error: null, value: {tools, client, stale: false}};
     } catch (err) {
         if (err instanceof StreamableHTTPError && err.code === 401) {
-            stderr.write('Authentication failed. Check your token or run `airtable-mcp configure`.\n');
-            process.exit(1);
+            return {error: {type: ErrorType.AUTH_FAILED}};
         }
         const cache = loadCache(profileName);
-        if (cache) {
-            const age = Math.round((Date.now() - cache.fetchedAt) / 60000);
-            stderr.write(`Warning: server unreachable, using cached tools (${age}m old).\n`);
-            return {tools: cache.tools, client: null};
+        if (cache !== null) {
+            return {error: null, value: {tools: cache.tools, client: null, stale: true}};
         }
         throw err;
     }
@@ -57,7 +68,7 @@ export async function resolveTools(
 // ---------------------------------------------------------------------------
 
 export function extractData(result: {content: Array<{type: string; text?: string}>; structuredContent?: unknown}): unknown {
-    if (result.structuredContent != null) return result.structuredContent;
+    if (result.structuredContent !== null && result.structuredContent !== undefined) return result.structuredContent;
     const text = result.content.find((c) => c.type === 'text')?.text;
     if (!text) return null;
     try {
@@ -74,10 +85,10 @@ export function extractData(result: {content: Array<{type: string; text?: string
 export function parseToolFlags(
     args: string[],
     schema: Tool['inputSchema'],
-): {parsed: Record<string, unknown>; unknownFlags: string[]} {
+): Result<{parsed: Record<string, unknown>; unknownFlags: Array<string>}> {
     const props = (schema as any)?.properties ?? {};
     const result: Record<string, unknown> = {};
-    const unknownFlags: string[] = [];
+    const unknownFlags: Array<string> = [];
     let i = 0;
     while (i < args.length) {
         const arg = args[i]!;
@@ -106,15 +117,23 @@ export function parseToolFlags(
             continue;
         }
         if (propType === 'number' || propType === 'integer') {
-            result[key] = Number(value);
+            const num = Number(value);
+            if (isNaN(num)) {
+                return {error: {type: ErrorType.UNPARSABLE_VALUE, argName: arg, value}};
+            }
+            result[key] = num;
         } else if (propType === 'array' || propType === 'object') {
-            result[key] = JSON.parse(value);
+            try {
+                result[key] = JSON.parse(value);
+            } catch {
+                return {error: {type: ErrorType.UNPARSABLE_VALUE, argName: arg, value}};
+            }
         } else {
             result[key] = value;
         }
         i += 2;
     }
-    return {parsed: result, unknownFlags};
+    return {error: null, value: {parsed: result, unknownFlags}};
 }
 
 export function extractFlag(args: string[], flag: string): string | null {

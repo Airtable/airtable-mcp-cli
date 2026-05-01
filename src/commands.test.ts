@@ -8,7 +8,7 @@ import {spawnSync} from 'node:child_process';
 // We test by running the built CLI as a subprocess.
 // This tests the actual user-facing behavior: args in, stdout/stderr/exit code out.
 
-const CLI = join(__dirname, '..', 'dist', 'cli.js');
+const CLI = join(__dirname, '..', 'dist', 'bin.js');
 
 function toolsHash(tools: any[]): string {
     return createHash('sha256').update(JSON.stringify(tools)).digest('hex');
