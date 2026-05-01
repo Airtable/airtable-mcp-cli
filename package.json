@@ -1,6 +1,6 @@
 {
   "name": "@airtable/mcp-cli",
-  "version": "0.1.4",
+  "version": "1.0.0",
   "description": "Airtable MCP CLI — auto-discovers commands from the MCP server",
   "bin": {
     "airtable-mcp": "dist/cli.js"
