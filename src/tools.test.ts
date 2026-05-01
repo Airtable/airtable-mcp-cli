@@ -15,35 +15,35 @@ describe('parseToolFlags', () => {
     };
 
     it('parses string flags', () => {
-        expect(parseToolFlags(['--name', 'hello'], schema).parsed).toEqual({name: 'hello'});
+        expect(parseToolFlags(['--name', 'hello'], schema).value!.parsed).toEqual({name: 'hello'});
     });
 
     it('parses number flags', () => {
-        expect(parseToolFlags(['--count', '42'], schema).parsed).toEqual({count: 42});
+        expect(parseToolFlags(['--count', '42'], schema).value!.parsed).toEqual({count: 42});
     });
 
     it('parses boolean flags', () => {
-        expect(parseToolFlags(['--verbose'], schema).parsed).toEqual({verbose: true});
+        expect(parseToolFlags(['--verbose'], schema).value!.parsed).toEqual({verbose: true});
     });
 
     it('parses array flags as JSON', () => {
-        expect(parseToolFlags(['--tags', '["a","b"]'], schema).parsed).toEqual({tags: ['a', 'b']});
+        expect(parseToolFlags(['--tags', '["a","b"]'], schema).value!.parsed).toEqual({tags: ['a', 'b']});
     });
 
     it('parses object flags as JSON', () => {
-        expect(parseToolFlags(['--filters', '{"view":"Grid","archived":false}'], schema).parsed).toEqual({
+        expect(parseToolFlags(['--filters', '{"view":"Grid","archived":false}'], schema).value!.parsed).toEqual({
             filters: {view: 'Grid', archived: false},
         });
     });
 
     it('reports unknown flags', () => {
-        const {parsed, unknownFlags} = parseToolFlags(['--unknown', 'val'], schema);
-        expect(parsed).toEqual({});
-        expect(unknownFlags).toEqual(['--unknown']);
+        const result = parseToolFlags(['--unknown', 'val'], schema);
+        expect(result.value!.parsed).toEqual({});
+        expect(result.value!.unknownFlags).toEqual(['--unknown']);
     });
 
     it('parses multiple flags', () => {
-        expect(parseToolFlags(['--name', 'hi', '--count', '5', '--verbose'], schema).parsed).toEqual({
+        expect(parseToolFlags(['--name', 'hi', '--count', '5', '--verbose'], schema).value!.parsed).toEqual({
             name: 'hi',
             count: 5,
             verbose: true,

@@ -19,6 +19,8 @@ import {
 import {readSecret} from './input.js';
 import {mcpCallTool, mcpConnect} from './mcp.js';
 import {
+    ErrorType,
+    type ResponseError,
     extractData,
     extractFlag,
     parseToolFlags,
@@ -294,10 +296,17 @@ class ToolsCommand extends Command {
 
     async execute(): Promise<number> {
         const resolved = requireProfile(loadConfig(), this.profile, this.context.stderr);
-        if (!resolved) return 1;
+        if (resolved === null) return 1;
 
-        const {tools, client} = await resolveTools(resolved.profile, resolved.profileName, this.refresh, this.context.stderr);
-        if (client) await client.close();
+        const result = await resolveTools(resolved.profile, resolved.profileName, this.refresh);
+        if (result.error !== null) {
+            return handleError(result.error, this.context.stderr);
+        }
+        const {tools, client, stale} = result.value;
+        if (stale) {
+            this.context.stderr.write('Warning: server unreachable, using cached tools.\n');
+        }
+        if (client !== null) await client.close();
 
         const visible = visibleTools(tools);
         if (visible.length === 0) {
@@ -396,20 +405,24 @@ class RunCommand extends Command {
             if (qsi !== -1) args.splice(qsi, 1);
         }
 
-        const nullStream = {write: () => true} as unknown as NodeJS.WritableStream;
-        const statusStream = quiet ? nullStream : this.context.stderr;
-
         const resolved = requireProfile(loadConfig(), profileFlag ?? undefined, this.context.stderr);
-        if (!resolved) return 1;
+        if (resolved === null) return 1;
 
         const toolName = args[0]!.replace(/-/g, '_');
         const rest = args.slice(1);
 
-        const {tools, client: cachedClient} = await resolveTools(resolved.profile, resolved.profileName, forceRefresh, statusStream);
+        const result = await resolveTools(resolved.profile, resolved.profileName, forceRefresh);
+        if (result.error !== null) {
+            return handleError(result.error, this.context.stderr);
+        }
+        const {tools, client: cachedClient, stale} = result.value;
+        if (stale && !quiet) {
+            this.context.stderr.write('Warning: server unreachable, using cached tools.\n');
+        }
 
         const tool = visibleTools(tools).find((t) => t.name === toolName);
-        if (!tool) {
-            if (cachedClient) await cachedClient.close();
+        if (tool === undefined) {
+            if (cachedClient !== null) await cachedClient.close();
             this.context.stderr.write(
                 `Unknown tool: ${args[0]}. Run \`airtable-mcp tools\` to see available tools.\n`,
             );
@@ -417,7 +430,7 @@ class RunCommand extends Command {
         }
 
         if (rest.includes('--help')) {
-            if (cachedClient) await cachedClient.close();
+            if (cachedClient !== null) await cachedClient.close();
             printToolHelp(tool, this.context.stdout);
             return 0;
         }
@@ -432,9 +445,14 @@ class RunCommand extends Command {
                 return 1;
             }
         } else {
-            const {parsed, unknownFlags} = parseToolFlags(rest, tool.inputSchema);
+            const parseResult = parseToolFlags(rest, tool.inputSchema);
+            if (parseResult.error !== null) {
+                if (cachedClient !== null) await cachedClient.close();
+                return handleError(parseResult.error, this.context.stderr);
+            }
+            const {parsed, unknownFlags} = parseResult.value;
             if (unknownFlags.length > 0) {
-                if (cachedClient) await cachedClient.close();
+                if (cachedClient !== null) await cachedClient.close();
                 this.context.stderr.write(
                     `Unknown flag${unknownFlags.length > 1 ? 's' : ''}: ${unknownFlags.join(', ')}\n` +
                     `Run \`airtable-mcp ${args[0]} --help\` to see available flags.\n`,
@@ -466,6 +484,23 @@ class RunCommand extends Command {
 }
 
 // ---------------------------------------------------------------------------
+// Shared error handling
+// ---------------------------------------------------------------------------
+
+function handleError(error: ResponseError, stderr: NodeJS.WritableStream): number {
+    switch (error.type) {
+        case ErrorType.AUTH_FAILED:
+            stderr.write('Authentication failed. Check your token or run `airtable-mcp configure`.\n');
+            return 1;
+        case ErrorType.UNPARSABLE_VALUE:
+            stderr.write(`Invalid value for ${error.argName}: "${error.value}"\n`);
+            return 2;
+        default:
+            throw new Error(`Unhandled error type: ${(error as any).type}`);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // CLI setup
 // ---------------------------------------------------------------------------
 
@@ -484,11 +519,3 @@ export function createCli(): Cli {
     return cli;
 }
 
-// Guard: only run when executed as the binary, not when imported by tests.
-// The bundled output is cli.js; in dev, ts-node/vitest runs cli.ts.
-// We check argv[1] — if it ends with our known entry names, we're the main script.
-const entryArg = process.argv[1] ?? '';
-const isBin = entryArg.endsWith('/cli.js') || entryArg.endsWith('\\cli.js');
-if (isBin) {
-    createCli().runExit(process.argv.slice(2));
-}
