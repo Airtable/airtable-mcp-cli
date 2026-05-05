@@ -67,11 +67,19 @@ describe('validateProfileName', () => {
 });
 
 describe('maskToken', () => {
-    it('shows only last 4 characters', () => {
-        expect(maskToken('pat_abcdef123456')).toBe('****3456');
+    it('shows prefix before dot for PATs', () => {
+        expect(maskToken('patWycuAfaaWJqD2e.abc123secret')).toBe('patWycuAfaaWJqD2e.****');
+    });
+
+    it('shows first 4 chars for non-PAT tokens', () => {
+        expect(maskToken('eyJhbGciOiJIUzI1NiJ9.payload.sig')).toBe('eyJh****');
+    });
+
+    it('shows first 4 chars for tokens without dots', () => {
+        expect(maskToken('some_other_token_1234')).toBe('some****');
     });
 
     it('hides short tokens entirely', () => {
-        expect(maskToken('short')).toBe('****');
+        expect(maskToken('abcd')).toBe('****');
     });
 });

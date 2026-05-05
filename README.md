@@ -7,10 +7,14 @@ This CLI discovers commands from the Airtable MCP server at runtime. `airtable-m
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Airtable/airtable-mcp-cli/main/install.sh | sh
+npm install -g @airtable/mcp-cli
 ```
 
-Also available on npm: `npm install -g @airtable/mcp-cli`
+Or download a standalone binary:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Airtable/airtable-mcp-cli/main/install.sh | sh
+```
 
 ## Quick start
 
@@ -75,6 +79,10 @@ airtable-mcp configure --profile work
 airtable-mcp configure --profile personal
 airtable-mcp tools --profile work
 ```
+
+## Skills
+
+Pre-built skills for common workflows are available in the [Airtable Skills repo](https://github.com/Airtable/skills).
 
 ## Automation and agents
 
