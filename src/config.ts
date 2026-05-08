@@ -168,6 +168,10 @@ export function resolveAccessToken(profile: Profile): string {
 // ---------------------------------------------------------------------------
 
 export function maskToken(token: string): string {
-    if (token.length <= 8) return '****';
-    return '****' + token.slice(-4);
+    if (token.startsWith('pat')) {
+        const dot = token.indexOf('.');
+        if (dot !== -1) return token.slice(0, dot) + '.****';
+    }
+    if (token.length <= 4) return '****';
+    return token.slice(0, 4) + '****';
 }

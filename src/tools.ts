@@ -27,11 +27,13 @@ export type Result<T> =
 
 export enum ErrorType {
     AUTH_FAILED = 'auth_failed',
+    FORBIDDEN = 'forbidden',
     UNPARSABLE_VALUE = 'unparsable_value',
 }
 
 export type ResponseError =
     | {type: ErrorType.AUTH_FAILED}
+    | {type: ErrorType.FORBIDDEN}
     | {type: ErrorType.UNPARSABLE_VALUE; argName: string; value: string};
 
 type ResolveToolsValue = {tools: Array<Tool>; client: Client | null; stale: boolean};
@@ -54,6 +56,9 @@ export async function resolveTools(
     } catch (err) {
         if (err instanceof StreamableHTTPError && err.code === 401) {
             return {error: {type: ErrorType.AUTH_FAILED}};
+        }
+        if (err instanceof StreamableHTTPError && err.code === 403) {
+            return {error: {type: ErrorType.FORBIDDEN}};
         }
         const cache = loadCache(profileName);
         if (cache !== null) {

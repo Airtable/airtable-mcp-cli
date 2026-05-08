@@ -59,12 +59,12 @@ describe('whoami', () => {
         mkdirSync(tmpHome, {recursive: true});
         const {stdout, exitCode} = run(['whoami'], {
             HOME: tmpHome,
-            AIRTABLE_TOKEN: 'pat_test1234567890xx',
+            AIRTABLE_TOKEN: 'patWycuAfaaWJqD2e.secretpart',
         });
         expect(exitCode).toBe(0);
         expect(stdout).toContain('AIRTABLE_TOKEN');
-        expect(stdout).toContain('****90xx');
-        expect(stdout).not.toContain('pat_test1234567890xx');
+        expect(stdout).toContain('patWycuAfaaWJqD2e.****');
+        expect(stdout).not.toContain('secretpart');
         rmSync(tmpHome, {recursive: true});
     });
 });

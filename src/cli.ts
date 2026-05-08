@@ -168,11 +168,13 @@ class ConfigureCommand extends Command {
         const endpoint = this.endpoint ?? DEFAULT_ENDPOINT;
 
         try {
-            const token = await readSecret('Personal access token (create at airtable.com/create/tokens): ');
+            const token = await readSecret('Personal access token (create at https://airtable.com/create/tokens): ');
             if (!token) {
                 this.context.stderr.write('Token is required.\n');
                 return 1;
             }
+
+            this.context.stderr.write(`Token:    ${maskToken(token)}\n`);
 
             const profile: Profile = {endpoint, token};
             const existingConfig = loadConfig();
@@ -222,7 +224,8 @@ class WhoamiCommand extends Command {
 
         const profiles = Object.keys(config.profiles);
         if (profiles.length > 1) {
-            this.context.stdout.write(`Profiles: ${profiles.join(', ')}\n`);
+            const labeled = profiles.map((p) => p === config!.defaultProfile ? `${p} (default)` : p);
+            this.context.stdout.write(`Profiles: ${labeled.join(', ')}\n`);
         }
         return 0;
     }
@@ -468,6 +471,7 @@ class RunCommand extends Command {
             if (result.isError) {
                 const text = result.content.map((c) => c.text).filter(Boolean).join('\n');
                 this.context.stderr.write(`Error: ${text}\n`);
+                this.context.stderr.write(`Run \`airtable-mcp ${args[0]} --help\` for usage.\n`);
                 return 1;
             }
             const data = extractData(result);
@@ -491,6 +495,9 @@ function handleError(error: ResponseError, stderr: NodeJS.WritableStream): numbe
     switch (error.type) {
         case ErrorType.AUTH_FAILED:
             stderr.write('Authentication failed. Check your token or run `airtable-mcp configure`.\n');
+            return 1;
+        case ErrorType.FORBIDDEN:
+            stderr.write('Access denied. Your token may be missing required scopes. Check your token at https://airtable.com/create/tokens.\n');
             return 1;
         case ErrorType.UNPARSABLE_VALUE:
             stderr.write(`Invalid value for ${error.argName}: "${error.value}"\n`);
