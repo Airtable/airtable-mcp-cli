@@ -82,7 +82,13 @@ airtable-mcp tools --profile work
 
 ## Skills
 
-Pre-built skills for common workflows are available in the [Airtable Skills repo](https://github.com/Airtable/skills).
+Install pre-built skills for common workflows:
+
+```sh
+npx skills add airtable/skills
+```
+
+Other installation methods can be found in the [Airtable Skills repo](https://github.com/Airtable/skills).
 
 ## Automation and agents
 
