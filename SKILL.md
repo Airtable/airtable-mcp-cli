@@ -16,7 +16,7 @@ Tools are fetched from the MCP server at runtime, so the CLI never has a hardcod
 ```sh
 airtable-mcp tools            # human-readable list
 airtable-mcp tools --json     # machine-parseable list
-airtable-mcp <tool> --help    # show flags and descriptions for a tool
+airtable-mcp <tool> --help    # show flags and descriptions for a tool (also: -h)
 ```
 
 Run `airtable-mcp tools` before assuming a tool exists. Tool names, arguments, and output shapes can change between server releases without a CLI update.
