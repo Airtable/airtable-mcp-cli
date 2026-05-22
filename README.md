@@ -49,10 +49,10 @@ airtable-mcp whoami                   Show current auth status
 airtable-mcp logout                   Remove saved credentials
 airtable-mcp tools                    List available tools
 airtable-mcp <tool> [--flags]         Run a tool
-airtable-mcp <tool> --help            Show help and flags for a tool
+airtable-mcp <tool> --help, -h        Show help and flags for a tool
 airtable-mcp completions <shell>      Generate shell completions (bash, zsh, fish)
-airtable-mcp --help                   Show help
-airtable-mcp --version                Print version
+airtable-mcp --help, -h               Show help
+airtable-mcp --version, -v            Print version
 ```
 
 Most commands accept `--profile <name>` to switch between accounts.

@@ -33,11 +33,24 @@ describe('--version', () => {
         expect(exitCode).toBe(0);
         expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
     });
+
+    it('-v is an alias for --version', () => {
+        const {stdout, exitCode} = run(['-v']);
+        expect(exitCode).toBe(0);
+        expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+    });
 });
 
 describe('--help', () => {
     it('prints usage and exits 0', () => {
         const {stdout, exitCode} = run(['--help']);
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('airtable-mcp configure');
+        expect(stdout).toContain('AIRTABLE_TOKEN');
+    });
+
+    it('-h is an alias for --help', () => {
+        const {stdout, exitCode} = run(['-h']);
         expect(exitCode).toBe(0);
         expect(stdout).toContain('airtable-mcp configure');
         expect(stdout).toContain('AIRTABLE_TOKEN');
@@ -160,6 +173,29 @@ describe('unknown tool', () => {
         const {stderr, exitCode} = run(['nonexistent-tool'], {HOME: tmpHome});
         expect(exitCode).toBe(1);
         expect(stderr).toContain('Unknown tool');
+        rmSync(tmpHome, {recursive: true});
+    });
+});
+
+describe('tool help with -h', () => {
+    it('shows tool help when -h is passed', () => {
+        const tmpHome = join(tmpdir(), `cli-test-${Date.now()}`);
+        const configDir = join(tmpHome, '.airtable');
+        mkdirSync(configDir, {recursive: true});
+        writeFileSync(join(configDir, 'cli.json'), JSON.stringify({
+            profiles: {default: {endpoint: 'https://mcp.airtable.com/mcp', token: 'pat_xxx'}},
+            defaultProfile: 'default',
+        }));
+        const tools = [{name: 'list_bases', description: 'List all bases', inputSchema: {type: 'object', properties: {limit: {type: 'number', description: 'Max results'}}}}];
+        writeFileSync(join(configDir, 'cache-default.json'), JSON.stringify({
+            tools,
+            hash: toolsHash(tools),
+            fetchedAt: Date.now(),
+        }));
+
+        const {stdout, exitCode} = run(['list-bases', '-h'], {HOME: tmpHome});
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('list-bases');
         rmSync(tmpHome, {recursive: true});
     });
 });

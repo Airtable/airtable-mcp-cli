@@ -128,10 +128,10 @@ class HelpCommand extends Command {
             '  airtable-mcp tools              List available tools\n' +
             '  airtable-mcp completions <shell> Generate shell completions (bash, zsh, fish)\n' +
             '  airtable-mcp <tool> [--flags]   Run a tool (via MCP)\n' +
-            '  airtable-mcp <tool> --help      Show help for a tool\n' +
+            '  airtable-mcp <tool> --help, -h  Show help for a tool\n' +
             '  airtable-mcp <tool> --input -   Pass arguments as JSON via stdin\n' +
             '  airtable-mcp <tool> -q          Suppress status messages\n' +
-            '  airtable-mcp --version          Print version\n' +
+            '  airtable-mcp --version, -v      Print version\n' +
             '\n' +
             'Environment variables:\n' +
             '  AIRTABLE_TOKEN              Personal access token (skips login/configure)\n' +
@@ -141,7 +141,7 @@ class HelpCommand extends Command {
 }
 
 class VersionCommand extends Command {
-    static override paths = [['--version']];
+    static override paths = [['--version'], ['-v']];
 
     async execute(): Promise<void> {
         this.context.stdout.write(`${VERSION}\n`);
@@ -168,7 +168,7 @@ class ConfigureCommand extends Command {
         const endpoint = this.endpoint ?? DEFAULT_ENDPOINT;
 
         try {
-            const token = await readSecret('Personal access token (create at https://airtable.com/create/tokens): ');
+            const token = await readSecret('Personal access token — create one at https://airtable.com/create/tokens\nToken: ');
             if (!token) {
                 this.context.stderr.write('Token is required.\n');
                 return 1;
@@ -432,7 +432,7 @@ class RunCommand extends Command {
             return 1;
         }
 
-        if (rest.includes('--help')) {
+        if (rest.includes('--help') || rest.includes('-h')) {
             if (cachedClient !== null) await cachedClient.close();
             printToolHelp(tool, this.context.stdout);
             return 0;
