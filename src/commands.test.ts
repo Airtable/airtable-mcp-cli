@@ -115,6 +115,18 @@ describe('configure', () => {
         expect(exitCode).toBe(2);
         expect(stderr).toContain('Invalid profile name');
     });
+
+    it('rejects a non-airtable.com endpoint with exit code 2', () => {
+        const {stderr, exitCode} = run(['configure', '--endpoint', 'https://attacker.com/mcp']);
+        expect(exitCode).toBe(2);
+        expect(stderr).toContain('airtable.com');
+    });
+
+    it('rejects a non-HTTPS endpoint with exit code 2', () => {
+        const {stderr, exitCode} = run(['configure', '--endpoint', 'http://mcp.airtable.com/mcp']);
+        expect(exitCode).toBe(2);
+        expect(stderr).toContain('HTTPS');
+    });
 });
 
 describe('corrupted config', () => {

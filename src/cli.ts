@@ -7,6 +7,7 @@ import {
     type Profile,
     DEFAULT_ENDPOINT,
     cachePath,
+    createSafeUrl,
     deleteConfigFile,
     getProfile,
     loadConfig,
@@ -165,7 +166,13 @@ class ConfigureCommand extends Command {
             this.context.stderr.write(`${e instanceof Error ? e.message : e}\n`);
             return 2;
         }
-        const endpoint = this.endpoint ?? DEFAULT_ENDPOINT;
+        let endpoint: string;
+        try {
+            endpoint = createSafeUrl(this.endpoint ?? DEFAULT_ENDPOINT).toString();
+        } catch (e) {
+            this.context.stderr.write(`${e instanceof Error ? e.message : e}\n`);
+            return 2;
+        }
 
         try {
             const token = await readSecret('Personal access token — create one at https://airtable.com/create/tokens\nToken: ');
