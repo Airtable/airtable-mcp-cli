@@ -1,0 +1,71 @@
+name: Dependabot Slack Alerts
+
+on:
+  dependabot_alert:
+    types: [created, reopened, reintroduced, auto_reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  notify-slack:
+    if: github.repository == 'Airtable/airtable-mcp-cli'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post alert to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PACKAGE: ${{ github.event.alert.dependency.package.name }}
+          MANIFEST: ${{ github.event.alert.dependency.manifest_path }}
+          SEVERITY: ${{ github.event.alert.security_advisory.severity }}
+          SUMMARY: ${{ github.event.alert.security_advisory.summary }}
+          GHSA_ID: ${{ github.event.alert.security_advisory.ghsa_id }}
+          ALERT_URL: ${{ github.event.alert.html_url }}
+          ACTION: ${{ github.event.action }}
+          REPO: ${{ github.repository }}
+        run: |
+          payload=$(jq -n \
+            --arg pkg "$PACKAGE" \
+            --arg manifest "$MANIFEST" \
+            --arg severity "$SEVERITY" \
+            --arg summary "$SUMMARY" \
+            --arg ghsa "$GHSA_ID" \
+            --arg url "$ALERT_URL" \
+            --arg action "$ACTION" \
+            --arg repo "$REPO" \
+            '{
+              blocks: [
+                {
+                  type: "header",
+                  text: {
+                    type: "plain_text",
+                    text: (":rotating_light: Dependabot alert " + $action + " in " + $repo)
+                  }
+                },
+                {
+                  type: "section",
+                  fields: [
+                    {type: "mrkdwn", text: ("*Package:*\n" + $pkg)},
+                    {type: "mrkdwn", text: ("*Severity:*\n" + $severity)},
+                    {type: "mrkdwn", text: ("*Manifest:*\n" + $manifest)},
+                    {type: "mrkdwn", text: ("*Advisory:*\n" + $ghsa)}
+                  ]
+                },
+                {
+                  type: "section",
+                  text: {type: "mrkdwn", text: ("*Summary:*\n" + $summary)}
+                },
+                {
+                  type: "actions",
+                  elements: [
+                    {
+                      type: "button",
+                      text: {type: "plain_text", text: "View alert"},
+                      url: $url
+                    }
+                  ]
+                }
+              ]
+            }')
+          curl -sS -X POST -H 'Content-type: application/json' \
+            --data "$payload" "$SLACK_WEBHOOK_URL"
