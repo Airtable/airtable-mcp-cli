@@ -2,7 +2,7 @@ name: Dependabot Slack Alerts
 
 on:
   dependabot_alert:
-    types: [created, reopened]
+    types: [created, reopened, reintroduced, auto_reopened]
 
 permissions:
   contents: read
