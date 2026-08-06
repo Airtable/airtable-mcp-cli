@@ -121,7 +121,7 @@ Endpoints are restricted to HTTPS on `*.airtable.com` to prevent token exfiltrat
 
 ## Configuration
 
-Config is stored in `~/.airtable/cli.json` with restricted file permissions (`0600`). The config directory is created with `0700` permissions. Tool definitions are cached in `~/.airtable/cache-{profile}.json` with a 60-second TTL. The cache is integrity-checked on read.
+Config is stored in `~/.airtable/cli.json` with restricted file permissions (`0600`). The config directory is created with `0700` permissions. Tool definitions are cached in `~/.airtable/cache-{profile}.json` (`0600`) with a 60-second TTL. On read the cache is checked against a stored hash to detect corruption, and cached tool metadata has control and escape characters stripped before it is printed. Neither is a defense against a local attacker who can already run code as your user; treat the cache file as trusted only to the extent your user account is.
 
 ## Development
 

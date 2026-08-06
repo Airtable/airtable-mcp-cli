@@ -30,6 +30,35 @@ describe('createSafeUrl', () => {
         const url = createSafeUrl('https://MCP.AIRTABLE.COM/mcp');
         expect(url.hostname).toBe('mcp.airtable.com');
     });
+
+    // Regression: protocol-relative path ("//host") used to pass the hostname
+    // check on the input URL while the reconstructed URL resolved to a
+    // different host, leaking the bearer token to an attacker (H1 #3792589).
+    it('rejects a protocol-relative path that resolves off airtable.com', () => {
+        expect(() => createSafeUrl('https://airtable.com//attacker.com/mcp')).toThrow();
+    });
+
+    it('rejects protocol-relative paths on an airtable subdomain too', () => {
+        expect(() => createSafeUrl('https://mcp.staging.airtable.com//attacker.example/mcp')).toThrow();
+    });
+
+    it('does not let the resolved host escape the allowlist', () => {
+        // Whatever slips past parsing, the returned URL must stay on airtable.com.
+        for (const raw of [
+            'https://airtable.com//attacker.com/mcp',
+            'https://airtable.com/\\/attacker.com/mcp',
+        ]) {
+            let host: string | null = null;
+            try {
+                host = createSafeUrl(raw).hostname;
+            } catch {
+                host = null;
+            }
+            if (host !== null) {
+                expect(host === 'airtable.com' || host.endsWith('.airtable.com')).toBe(true);
+            }
+        }
+    });
 });
 
 describe('resolveAccessToken', () => {

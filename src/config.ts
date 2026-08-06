@@ -95,11 +95,21 @@ export function createSafeUrl(raw: string): URL {
     if (u.protocol !== 'https:') {
         throw new Error(`Unsafe endpoint: only HTTPS is allowed (got "${u.protocol}").`);
     }
-    const hostname = u.hostname.toLowerCase();
+    // A pathname starting with "//" is a protocol-relative reference (RFC 3986
+    // §4.2). When we reconstruct the URL below it would override the authority,
+    // pointing the endpoint at a host we never validated. Reject it outright.
+    if (u.pathname.startsWith('//')) {
+        throw new Error('Unsafe endpoint: path cannot start with "//".');
+    }
+    // Reconstruct from the path, then validate the RESOLVED hostname. Checking
+    // the input hostname alone is not enough: the rebuild can change the
+    // authority, so the allowlist has to run against the URL we actually use.
+    const resolved = new URL(u.pathname + u.search, `https://${u.hostname.toLowerCase()}`);
+    const hostname = resolved.hostname.toLowerCase();
     if (hostname !== 'airtable.com' && !hostname.endsWith('.airtable.com')) {
         throw new Error(`Unsafe endpoint: only airtable.com domains are allowed (got "${hostname}").`);
     }
-    return new URL(u.pathname + u.search, `https://${hostname}`);
+    return resolved;
 }
 
 export function getEnvEndpoint(): string {

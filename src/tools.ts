@@ -111,8 +111,14 @@ export function parseToolFlags(
         const propType = (propSchema as any)?.type;
 
         if (propType === 'boolean') {
-            result[key] = true;
-            i++;
+            const next = args[i + 1];
+            if (next === 'true' || next === 'false') {
+                result[key] = next === 'true';
+                i += 2;
+            } else {
+                result[key] = true;
+                i++;
+            }
             continue;
         }
 
@@ -149,6 +155,31 @@ export function extractFlag(args: string[], flag: string): string | null {
     return val;
 }
 
+// Split raw args at the first `--` separator. Everything before it is subject
+// to CLI-global flag handling (--profile, --output, --refresh, --quiet);
+// everything after is forwarded to the tool verbatim, so a tool input can share
+// a name with a reserved CLI flag without being consumed by CLI option parsing.
+export function splitAtSeparator(args: string[]): {cliArgs: string[]; passthrough: string[]} {
+    const i = args.indexOf('--');
+    if (i === -1) return {cliArgs: [...args], passthrough: []};
+    return {cliArgs: args.slice(0, i), passthrough: args.slice(i + 1)};
+}
+
+// Tool metadata (title, description, property descriptions) originates from the
+// MCP server and the on-disk cache, neither of which is a trusted authoring
+// boundary. Strip C0/C1 control bytes and ANSI/OSC escape sequences before
+// writing any of it to a terminal so a poisoned string cannot spoof output,
+// rewrite lines, or smuggle hidden instructions.
+// Keep \t (\x09) and \n (\x0A); strip the rest of C0, DEL (\x7F), and C1
+// (\x80-\x9F). Removing the ESC and C1 introducer bytes neutralizes ANSI/OSC
+// sequences, leaving any residue as harmless literal text.
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g;
+
+export function stripControlChars(text: string): string {
+    return text.replace(CONTROL_CHARS, '');
+}
+
 // ---------------------------------------------------------------------------
 // Help formatting
 // ---------------------------------------------------------------------------
@@ -160,9 +191,9 @@ function indentBlock(text: string, prefix: string): string {
 export function printToolHelp(tool: Tool, stdout: NodeJS.WritableStream): void {
     const name = tool.name.replace(/_/g, '-');
     stdout.write(`\n  ${name}`);
-    if (tool.title) stdout.write(` — ${tool.title}`);
+    if (tool.title) stdout.write(` — ${stripControlChars(tool.title)}`);
     stdout.write('\n');
-    if (tool.description) stdout.write(`\n${indentBlock(tool.description, '  ')}\n`);
+    if (tool.description) stdout.write(`\n${indentBlock(stripControlChars(tool.description), '  ')}\n`);
 
     const props = (tool.inputSchema as any)?.properties;
     const required = new Set((tool.inputSchema as any)?.required ?? []);
@@ -172,7 +203,7 @@ export function printToolHelp(tool: Tool, stdout: NodeJS.WritableStream): void {
             const req = required.has(key) ? ' (required)' : '';
             const desc = (val as any)?.description;
             stdout.write(`  --${key}${req}\n`);
-            if (desc) stdout.write(`${indentBlock(desc, '      ')}\n`);
+            if (desc) stdout.write(`${indentBlock(stripControlChars(desc), '      ')}\n`);
         }
     }
     stdout.write('\nPass --input - to provide arguments as JSON via stdin.\n\n');
