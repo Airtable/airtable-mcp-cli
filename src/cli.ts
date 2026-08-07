@@ -28,6 +28,8 @@ import {
     printToolHelp,
     readStdin,
     resolveTools,
+    splitAtSeparator,
+    stripControlChars,
     visibleTools,
 } from './tools.js';
 
@@ -131,6 +133,7 @@ class HelpCommand extends Command {
             '  airtable-mcp <tool> [--flags]   Run a tool (via MCP)\n' +
             '  airtable-mcp <tool> --help, -h  Show help for a tool\n' +
             '  airtable-mcp <tool> --input -   Pass arguments as JSON via stdin\n' +
+            '  airtable-mcp <tool> -- [args]   Pass everything after -- to the tool verbatim\n' +
             '  airtable-mcp <tool> -q          Suppress status messages\n' +
             '  airtable-mcp --version, -v      Print version\n' +
             '\n' +
@@ -326,7 +329,7 @@ class ToolsCommand extends Command {
 
         const rows = visible.map((tool) => ({
             name: tool.name.replace(/_/g, '-'),
-            title: tool.title ?? '',
+            title: stripControlChars(tool.title ?? ''),
             access: tool.annotations?.readOnlyHint
                 ? 'read-only'
                 : (tool.annotations as any)?.destructiveHint
@@ -388,8 +391,7 @@ class RunCommand extends Command {
     args = Option.Proxy();
 
     async execute(): Promise<number> {
-        const args = this.args;
-        if (args.length === 0) {
+        if (this.args.length === 0) {
             this.context.stderr.write(
                 'Usage: airtable-mcp <tool-name> [flags]\n\n' +
                     'Run `airtable-mcp tools` to see available tools.\n' +
@@ -398,28 +400,39 @@ class RunCommand extends Command {
             return 2;
         }
 
-        const profileFlag = extractFlag(args, '--profile');
-        const outputFlag = extractFlag(args, '--output');
+        const {cliArgs, passthrough} = splitAtSeparator(this.args);
+
+        const profileFlag = extractFlag(cliArgs, '--profile');
+        const outputFlag = extractFlag(cliArgs, '--output');
         if (outputFlag !== null && outputFlag !== 'raw') {
             this.context.stderr.write(`Unknown output format: "${outputFlag}". Supported: raw\n`);
             return 2;
         }
-        const refreshIdx = args.indexOf('--refresh');
+        const refreshIdx = cliArgs.indexOf('--refresh');
         const forceRefresh = refreshIdx !== -1;
-        if (forceRefresh) args.splice(refreshIdx, 1);
-        const quiet = args.includes('--quiet') || args.includes('-q');
+        if (forceRefresh) cliArgs.splice(refreshIdx, 1);
+        const quiet = cliArgs.includes('--quiet') || cliArgs.includes('-q');
         if (quiet) {
-            const qi = args.indexOf('--quiet');
-            if (qi !== -1) args.splice(qi, 1);
-            const qsi = args.indexOf('-q');
-            if (qsi !== -1) args.splice(qsi, 1);
+            const qi = cliArgs.indexOf('--quiet');
+            if (qi !== -1) cliArgs.splice(qi, 1);
+            const qsi = cliArgs.indexOf('-q');
+            if (qsi !== -1) cliArgs.splice(qsi, 1);
+        }
+
+        if (cliArgs.length === 0) {
+            this.context.stderr.write(
+                'Usage: airtable-mcp <tool-name> [flags]\n\n' +
+                    'Run `airtable-mcp tools` to see available tools.\n' +
+                    'Run `airtable-mcp --help` for help.\n',
+            );
+            return 2;
         }
 
         const resolved = requireProfile(loadConfig(), profileFlag ?? undefined, this.context.stderr);
         if (resolved === null) return 1;
 
-        const toolName = args[0]!.replace(/-/g, '_');
-        const rest = args.slice(1);
+        const toolName = cliArgs[0]!.replace(/-/g, '_');
+        const rest = [...cliArgs.slice(1), ...passthrough];
 
         const result = await resolveTools(resolved.profile, resolved.profileName, forceRefresh);
         if (result.error !== null) {
@@ -434,7 +447,7 @@ class RunCommand extends Command {
         if (tool === undefined) {
             if (cachedClient !== null) await cachedClient.close();
             this.context.stderr.write(
-                `Unknown tool: ${args[0]}. Run \`airtable-mcp tools\` to see available tools.\n`,
+                `Unknown tool: ${cliArgs[0]}. Run \`airtable-mcp tools\` to see available tools.\n`,
             );
             return 1;
         }
@@ -465,7 +478,7 @@ class RunCommand extends Command {
                 if (cachedClient !== null) await cachedClient.close();
                 this.context.stderr.write(
                     `Unknown flag${unknownFlags.length > 1 ? 's' : ''}: ${unknownFlags.join(', ')}\n` +
-                    `Run \`airtable-mcp ${args[0]} --help\` to see available flags.\n`,
+                    `Run \`airtable-mcp ${cliArgs[0]} --help\` to see available flags.\n`,
                 );
                 return 2;
             }
@@ -478,7 +491,7 @@ class RunCommand extends Command {
             if (result.isError) {
                 const text = result.content.map((c) => c.text).filter(Boolean).join('\n');
                 this.context.stderr.write(`Error: ${text}\n`);
-                this.context.stderr.write(`Run \`airtable-mcp ${args[0]} --help\` for usage.\n`);
+                this.context.stderr.write(`Run \`airtable-mcp ${cliArgs[0]} --help\` for usage.\n`);
                 return 1;
             }
             const data = extractData(result);

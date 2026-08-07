@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {extractData, extractFlag, parseToolFlags, visibleTools} from './tools.js';
+import {extractData, extractFlag, parseToolFlags, splitAtSeparator, stripControlChars, visibleTools} from './tools.js';
 
 describe('parseToolFlags', () => {
     const schema = {
@@ -24,6 +24,19 @@ describe('parseToolFlags', () => {
 
     it('parses boolean flags', () => {
         expect(parseToolFlags(['--verbose'], schema).value!.parsed).toEqual({verbose: true});
+    });
+
+    it('parses an explicit boolean value', () => {
+        expect(parseToolFlags(['--verbose', 'true'], schema).value!.parsed).toEqual({verbose: true});
+        expect(parseToolFlags(['--verbose', 'false'], schema).value!.parsed).toEqual({verbose: false});
+    });
+
+    it('does not consume a non-boolean token after a boolean flag', () => {
+        // A bare boolean flag stays true; the following positional is left untouched.
+        expect(parseToolFlags(['--verbose', '--name', 'hi'], schema).value!.parsed).toEqual({
+            verbose: true,
+            name: 'hi',
+        });
     });
 
     it('parses array flags as JSON', () => {
@@ -80,6 +93,50 @@ describe('extractFlag', () => {
         const args = ['--other'];
         expect(extractFlag(args, '--profile')).toBeNull();
         expect(args).toEqual(['--other']);
+    });
+});
+
+describe('splitAtSeparator', () => {
+    it('returns all args as cliArgs when there is no separator', () => {
+        expect(splitAtSeparator(['rotate-keys', '--profile', 'sandbox'])).toEqual({
+            cliArgs: ['rotate-keys', '--profile', 'sandbox'],
+            passthrough: [],
+        });
+    });
+
+    it('forwards everything after -- to the tool verbatim', () => {
+        expect(splitAtSeparator(['rotate-keys', '--profile', 'sandbox', '--', '--profile', 'production'])).toEqual({
+            cliArgs: ['rotate-keys', '--profile', 'sandbox'],
+            passthrough: ['--profile', 'production'],
+        });
+    });
+
+    it('splits on the first -- only', () => {
+        expect(splitAtSeparator(['t', '--', '--a', '--', '--b'])).toEqual({
+            cliArgs: ['t'],
+            passthrough: ['--a', '--', '--b'],
+        });
+    });
+});
+
+describe('stripControlChars', () => {
+    it('removes ANSI/OSC escape sequences via the ESC byte', () => {
+        const input = '\x1b[2K\x1b[1G\x1b[32mlist-records [OFFICIAL ✓ SIGNED]\x1b[0m';
+        const result = stripControlChars(input);
+        expect(result).not.toContain('\x1b');
+        expect(result).toContain('list-records [OFFICIAL ✓ SIGNED]');
+    });
+
+    it('strips C0 controls, DEL, and C1 controls', () => {
+        expect(stripControlChars('a\x00b\x07c\x7fd\x9be')).toBe('abcde');
+    });
+
+    it('preserves newlines and tabs', () => {
+        expect(stripControlChars('line1\nline2\tcol')).toBe('line1\nline2\tcol');
+    });
+
+    it('leaves ordinary text untouched', () => {
+        expect(stripControlChars('List Airtable records.')).toBe('List Airtable records.');
     });
 });
 

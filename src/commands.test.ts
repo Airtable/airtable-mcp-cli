@@ -116,10 +116,10 @@ describe('configure', () => {
         expect(stderr).toContain('Invalid profile name');
     });
 
-    it('rejects a non-airtable.com endpoint with exit code 2', () => {
+    it('rejects an unapproved endpoint with exit code 2', () => {
         const {stderr, exitCode} = run(['configure', '--endpoint', 'https://attacker.com/mcp']);
         expect(exitCode).toBe(2);
-        expect(stderr).toContain('airtable.com');
+        expect(stderr).toContain('only approved Airtable HTTPS endpoints');
     });
 
     it('rejects a non-HTTPS endpoint with exit code 2', () => {
