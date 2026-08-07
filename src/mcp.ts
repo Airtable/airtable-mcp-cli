@@ -2,7 +2,7 @@ import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type {Tool} from '@modelcontextprotocol/sdk/types.js';
 
-import {type Profile, resolveAccessToken} from './config.js';
+import {type Profile, createSafeUrl, isAllowedEndpointHostname, resolveAccessToken} from './config.js';
 import {USER_AGENT, VERSION} from './cli.js';
 
 // ---------------------------------------------------------------------------
@@ -13,7 +13,16 @@ const CONNECT_TIMEOUT_MS = 10_000;
 
 export async function mcpConnect(endpoint: string, profile: Profile): Promise<Client> {
     const token = resolveAccessToken(profile);
-    const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
+    const safeEndpoint = createSafeUrl(endpoint);
+    const hostname = safeEndpoint.hostname.toLowerCase();
+    // Recheck the URL immediately before attaching credentials so a normalization
+    // bug cannot move the authority after the original allowlist check.
+    if (!isAllowedEndpointHostname(hostname)) {
+        throw new Error(
+            `Unsafe endpoint: only approved Airtable HTTPS endpoints are allowed (got "${hostname}").`,
+        );
+    }
+    const transport = new StreamableHTTPClientTransport(safeEndpoint, {
         requestInit: {
             headers: {
                 authorization: `Bearer ${token}`,

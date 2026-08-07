@@ -54,7 +54,12 @@ jobs:
         run: |
           SUFFIX="${{ matrix.target }}"
           SUFFIX="${SUFFIX#bun-}"
-          bun build dist/bin.js --compile --target=${{ matrix.target }} --outfile "dist/airtable-mcp-${SUFFIX}"
+          bun build dist/bin.js \
+            --compile \
+            --no-compile-autoload-dotenv \
+            --no-compile-autoload-bunfig \
+            --target=${{ matrix.target }} \
+            --outfile "dist/airtable-mcp-${SUFFIX}"
 
       - name: Generate checksum
         run: |

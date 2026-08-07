@@ -14,21 +14,66 @@ describe('createSafeUrl', () => {
         expect(url.hostname).toBe('airtable.com');
     });
 
+    it('accepts the local MCP development endpoint', () => {
+        const url = createSafeUrl('https://mcp.hyperbasedev.com:3000/mcp');
+        expect(url.hostname).toBe('mcp.hyperbasedev.com');
+        expect(url.port).toBe('3000');
+    });
+
     it('rejects HTTP URLs', () => {
         expect(() => createSafeUrl('http://mcp.airtable.com/mcp')).toThrow('only HTTPS');
     });
 
     it('rejects non-airtable domains', () => {
-        expect(() => createSafeUrl('https://evil.com/mcp')).toThrow('only airtable.com domains');
+        expect(() => createSafeUrl('https://evil.com/mcp')).toThrow(
+            'only approved Airtable HTTPS endpoints',
+        );
     });
 
     it('rejects subdomain tricks like notatirtable.com', () => {
-        expect(() => createSafeUrl('https://notatirtable.com/mcp')).toThrow('only airtable.com domains');
+        expect(() => createSafeUrl('https://notatirtable.com/mcp')).toThrow(
+            'only approved Airtable HTTPS endpoints',
+        );
+    });
+
+    it('rejects other hyperbasedev.com subdomains', () => {
+        expect(() => createSafeUrl('https://attacker.hyperbasedev.com/mcp')).toThrow(
+            'Unsafe endpoint: only approved Airtable HTTPS endpoints are allowed (got "attacker.hyperbasedev.com").',
+        );
     });
 
     it('normalizes hostname to lowercase', () => {
         const url = createSafeUrl('https://MCP.AIRTABLE.COM/mcp');
         expect(url.hostname).toBe('mcp.airtable.com');
+    });
+
+    // Regression: protocol-relative path ("//host") used to pass the hostname
+    // check on the input URL while the reconstructed URL resolved to a
+    // different host, leaking the bearer token to an attacker (H1 #3792589).
+    it('rejects a protocol-relative path that resolves off airtable.com', () => {
+        expect(() => createSafeUrl('https://airtable.com//attacker.com/mcp')).toThrow();
+    });
+
+    it('rejects protocol-relative paths on an airtable subdomain too', () => {
+        expect(() => createSafeUrl('https://mcp.staging.airtable.com//attacker.example/mcp')).toThrow();
+    });
+
+    it('does not let the resolved host escape the allowlist', () => {
+        // Whatever slips past parsing, the returned URL must stay on airtable.com.
+        for (const raw of [
+            'https://airtable.com//attacker.com/mcp',
+            'https://airtable.com/\\/attacker.com/mcp',
+        ]) {
+            let host: string | null = null;
+            try {
+                host = createSafeUrl(raw).hostname;
+            } catch {
+                host = null;
+            }
+            if (host !== null) {
+                expect(host === 'airtable.com' || host.endsWith('.airtable.com')).toBe(true);
+            }
+        }
     });
 });
 

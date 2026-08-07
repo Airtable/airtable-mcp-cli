@@ -36,7 +36,9 @@ export function loadCache(profile: string): Cache | null {
     } catch {
         return null;
     }
-    // Validate integrity — reject tampered or corrupted cache
+    // Corruption check only. The hash is unkeyed and stored alongside the data,
+    // so it detects accidental corruption, not deliberate tampering by a process
+    // running as the current user. Callers must treat tool metadata as untrusted.
     if (hashTools(cache.tools) !== cache.hash) return null;
     return cache;
 }
